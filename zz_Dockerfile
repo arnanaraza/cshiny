@@ -1,0 +1,42 @@
+FROM rocker/tidyverse
+
+## update system libraries
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get clean
+
+
+# system libraries of general use
+RUN apt-get update -qq && apt-get -y --no-install-recommends install \
+    libxml2-dev \
+    libpq-dev \
+    libssh2-1-dev \
+    unixodbc-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    curl
+
+RUN apt-get  -y --no-install-recommends install \
+  libgdal-dev \
+  libproj-dev \
+  libgeos-dev \
+  libudunits2-dev \
+  netcdf-bin
+  
+RUN apt-get install gdal-bin -y
+
+RUN R -e "install.packages(c('plyr', 'devtools', 'dplyr', 'DBI', 'shiny', 'RPostgres', 'DT', 'stringr', 'uuid', 'glue', 'shinydashboard', 'lubridate', 'shinycssloaders', 'ggplot2', 'scales', 'shinyjs', 'readxl', 'writexl'))"  
+
+RUN R -e "install.packages (c('leaflet', 'raster', 'leaflet.extras', 'RColorBrewer', 'sf', 'aws.s3'))"
+
+RUN R -e "remotes::install_github('cran/rgdal')"
+
+RUN mkdir /root/app
+
+COPY . /root/app
+
+EXPOSE 8000
+
+WORKDIR /root/app
+
+CMD ["R", "-e", "shiny::runApp('.', port = 8000, host = '0.0.0.0')"]
