@@ -20,12 +20,12 @@ source('zz_tiles.R')
 source('Netflux.R')
 
 # Set AWS environment variables
-Sys.setenv("AWS_ACCESS_KEY_ID" = "PASTEHERE",
-           "AWS_SECRET_ACCESS_KEY" = "PASTEHERE",
+Sys.setenv("AWS_ACCESS_KEY_ID" = "",
+           "AWS_SECRET_ACCESS_KEY" = "",
            "AWS_DEFAULT_REGION" = "eu-central-1")
 
 options(shiny.maxRequestSize = 50 * 1024^2)
-
+world_map <- st_as_sf(getMap(resolution = "low"))  # Load world map
 # Define land cover class names
 lc_names <- c(
   "0" = "No Data",
@@ -166,7 +166,7 @@ ui <- dashboardPage(
     )
   )
 )
-world_map <- st_as_sf(getMap(resolution = "low"))  # Load world map
+
 
 server <- function(input, output, session) {
   reactive_aoi <- reactiveVal(NULL)
@@ -305,7 +305,8 @@ server <- function(input, output, session) {
           message("Creating VRT file at: ", vrt_path)
           
           # Create the VRT file using gdalbuildvrt
-          gdalbuildvrt(gdalfile = unlist(local_files), output.vrt = vrt_path)
+          print(local_files)
+          gdalbuildvrt(gdalfile = unlist(local_files), output.vrt = vrt_path, overwrite=T)
           
           if (file.exists(vrt_path)) {
             message("VRT file created successfully.")
@@ -325,6 +326,7 @@ server <- function(input, output, session) {
   
   reactive_raster <- reactive({
     raster_path <- downloadTilesBasedOnAOI()
+    print(raster_path)
     message("Raster path from get_tiles event: ", raster_path)
     if (!is.null(raster_path) && file.exists(raster_path)) {
       raster_data <- rast(raster_path)
