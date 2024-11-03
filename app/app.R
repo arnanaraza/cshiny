@@ -79,6 +79,15 @@ ui <- dashboardPage(
     )
   ),
   dashboardBody(
+    # a little bit of css - just for the main area background 
+    tags$style(
+      HTML("
+           /* custom color for the dashboard content area */
+           .content-wrapper, .right-side {
+             background-color: #9AC0CD;
+           }"
+      )
+    ),
     tabItems(
       tabItem(
         tabName = "aoi_selection",
