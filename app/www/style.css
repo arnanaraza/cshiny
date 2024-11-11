@@ -1,0 +1,128 @@
+
+body {
+  background-color: #C1CDCD;
+  color: black;
+  
+}
+
+.navbar-brand img {
+  height: 30px;
+  margin-bottom: 5px;
+}
+.navbar {
+ background-image: url('dashboard_banner3.jpeg');
+  width: 100%;
+  border-radius: 7px;
+  margin-bottom: 10px;
+}
+
+/* align items in the navbar in a flex layout */
+.navbar-collapse {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* align title on the left */
+.navbar-header .navbar-brand {
+  margin-left: 15px;
+  font-size: 25px;
+  color: #fffacd;
+  font-weight: bold;
+  justify-content: center;
+}
+
+
+/* Center and style the tab names*/
+.navbar .navbar-nav {
+  display: flex;
+  justify-content: center;
+  flex-grow: 1;
+  margin-top: 5px;
+  padding: 0;
+  color: #fffacd;
+}
+
+/* Style each tab as button */
+.navbar-nav > li > a {
+  border-radius: 5px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 18px;
+  margin-bottom: 5px;
+}
+
+
+.custom-absolute-panel {
+  
+  background-color: #f2f9f7;
+  padding: 20px;
+  margin-right: 10px;
+  border-radius: 8px;
+  box-shadow: 2px 2px 5px black;
+}
+  
+
+.card {
+	background: #AAB5BC;
+	padding: 10px;
+	margin-bottom: 28px;
+	margin-left: 20px;
+	margin-right: 20px;
+	border-radius: 15px;
+	background-clip: padding-box;
+	font-size: 10px;
+	color: black;
+	box-shadow: 0px 4px 8px black;
+	text-align: center;
+}
+
+.card_grey_left {
+	background: #AAB5BC;
+	padding: 5px;
+	margin-bottom: 28px;
+	margin-left: 10px;
+	margin-right: 5px;
+	border-radius: 15px;
+	background-clip: padding-box;
+	font-size: 12px;
+	color: black;
+	text-align: center;
+	box-shadow: 0px 4px 8px black;
+}
+
+.card_grey_right {
+	background: #AAB5BC;
+	padding: 10px;
+	margin-bottom: 28px;
+	margin-right: 10px;
+	margin-left: 0px;
+	border-radius: 15px;
+	background-clip: padding-box;
+	font-size: 10px;
+	color: black;
+	text-align: center;
+	box-shadow: 0px 4px 8px black;
+}
+
+.card_grey-title {
+  
+  background-color: #2F4F4F;
+  color: #ffffff;
+  padding: 8px 12px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  font-weight: bold;
+  font-size: 1.3em;
+  margin-bottom: 10px;
+}
+
+
+/* Styling the tables - applies automatically, no need to specify on the UI*/
+
+.dataTables_wrapper {
+  border: 2px solid black;
+  border-radius: 5px;
+  
+}
+
