@@ -13,19 +13,21 @@ library(dplyr)
 library(reshape2)
 library(DT)
 library(rworldmap)
+library(sp)
+library(shinyjs)
 
 # Set working directory
-setwd('C:/cshiny/app')
+#setwd('C:/cshiny/app')
 source('zz_tiles.R')
 source('Netflux.R')
 
 # Set AWS environment variables
 Sys.setenv("AWS_ACCESS_KEY_ID" = "",
            "AWS_SECRET_ACCESS_KEY" = "",
-           "AWS_DEFAULT_REGION" = "eu-central-1")
+           "AWS_DEFAULT_REGION" = "")
 
 options(shiny.maxRequestSize = 50 * 1024^2)
-world_map <- st_as_sf(getMap(resolution = "low"))  # Load world map
+
 # Define land cover class names
 lc_names <- c(
   "0" = "No Data",
@@ -67,106 +69,148 @@ lc_names <- c(
   "220" = "Permanent snow and ice"
 )
 
-ui <- dashboardPage(
-  dashboardHeader(title = "C pools Viewer"),
-  dashboardSidebar(
-    sidebarMenu(
-      menuItem("Single Epochs", tabName = "aoi_selection", icon = icon("globe")),
-      menuItem("Accounting Periods", tabName = "accounting", icon = icon("balance-scale"))
-    )
-  ),
-  dashboardBody(
-    tabItems(
-      tabItem(
-        tabName = "aoi_selection",
-        fluidRow(
-          box(
-            title = "Select Year", status = "primary", solidHeader = TRUE,
-            selectInput("accounting_year", "Select Accounting Year", choices = c("2010", "2015", "2016", "2017", "2018", "2019", "2020", "2021"))
-          ),
-          box(
-            title = "Select AOI Type", status = "primary", solidHeader = TRUE,
-            radioButtons("aoi_type", "Choose AOI Type:", choices = c("Administrative Area", "User-Defined Area"), selected = "User-Defined Area"),
-            conditionalPanel(
-              condition = "input.aoi_type == 'User-Defined Area'",
-              fileInput("shapefile_zip", "Upload Shapefile (ZIP)", multiple = FALSE, accept = c('.zip')),
-              checkboxInput("show_polygon", "Show Polygon", value = TRUE)
-            ),
-            conditionalPanel(
-              condition = "input.aoi_type == 'Administrative Area'",
-              selectInput("country_select", "Select Country", choices = unique(world_map$NAME), selected = "Uganda")
-            )
-          ),
-          box(
-            title = "Draw AOI", status = "primary", solidHeader = TRUE, width = 12,
-            leafletOutput("map", height = 600),
-            actionButton("get_tiles", "Download C Pools", class = "btn-primary btn-block", style = "width: 100%;"),
-            selectInput("c_pool_display", "Select C Pool Layer", choices = NULL, width = "100%"),
-            verbatimTextOutput("tile_names"),
-            verbatimTextOutput("raster_status")
-          )
-        ),
-        fluidRow(
-          box(
-            title = "Land Use/Ecosystem Selection", status = "primary", solidHeader = TRUE, width = 12,
-            radioButtons("land_use_option", "Choose Land Use/Ecosystem Data:", choices = c("Upload Own", "Use CCI-LC"), selected = "Use CCI-LC"),
-            conditionalPanel(
-              condition = "input.land_use_option == 'Upload Own'",
-              fileInput("land_use_zip", "Choose a Land Use ZIP file", accept = c('.zip')),
-              uiOutput("land_use_column_ui")
-            )
-          ),
-          box(
-            title = "Ecosystem Analysis", status = "primary", solidHeader = TRUE, width = 12,
-            actionButton("analyze", "Analyze", class = "btn-primary btn-block"),
-            dataTableOutput("analysis_results"),
-            dataTableOutput("ecosystem_analysis_results") # Second table
-          )
-        )
-      ),
-      tabItem(
-        tabName = "accounting",
-        fluidRow(
-          box(
-            title = "Select Years", status = "primary", solidHeader = TRUE,
-            selectInput("start_year", "Select Start Year", choices = c("2010", "2015", "2016", "2017", "2018", "2019", "2020", "2021")),
-            selectInput("end_year", "Select End Year", choices = c("2010", "2015", "2016", "2017", "2018", "2019", "2020", "2021"))
-          ),
-          box(
-            title = "Select AOI Type", status = "primary", solidHeader = TRUE,
-            radioButtons("aoi_type_accounting", "Choose AOI Type:", choices = c("Administrative Area", "User-Defined Area"), selected = "User-Defined Area"),
-            conditionalPanel(
-              condition = "input.aoi_type_accounting == 'User-Defined Area'",
-              fileInput("shapefile_zip_accounting", "Upload Shapefile (ZIP)", multiple = FALSE, accept = c('.zip')),
-              checkboxInput("show_polygon_accounting", "Show Polygon", value = TRUE)
-            )
-          ),
-          box(
-            title = "Draw AOI", status = "primary", solidHeader = TRUE, width = 12,
-            conditionalPanel(
-              condition = "input.aoi_type_accounting == 'User-Defined Area'",
-              leafletOutput("map_accounting", height = 600)
-            ),
-            actionButton("get_tiles_accounting", "Download C Pools", class = "btn-primary btn-block", style = "width: 100%;"),
-            selectInput("c_pool_display_accounting", "Select C Pool Layer", choices = NULL, width = "100%"),
-            verbatimTextOutput("tile_names_accounting"),
-            verbatimTextOutput("raster_status_accounting")
-          )
-        ),
-        fluidRow(
-          box(
-            title = "Accounting Analysis", status = "primary", solidHeader = TRUE, width = 12,
-            actionButton("analyze_accounting", "Analyze", class = "btn-primary btn-block"),
-            dataTableOutput("short_table_results"),
-            dataTableOutput("moderate_table_results"),
-            dataTableOutput("detailed_table_results")
-          )
-        )
-      )
-    )
-  )
-)
+world_map <- st_as_sf(getMap(resolution = "low"))  # Load world map
 
+ui <- navbarPage(
+  title = div(img(src="country.png"),"CPools Viewer"),
+  includeCSS("www/style.css"),
+  shinyjs::useShinyjs(),
+  tabPanel("Single Epochs",
+           fluidRow(
+             div( class = "card",
+                  leaflet::leafletOutput('map',height = "550px"),
+                  absolutePanel(top = 100,right = 20, width = 200,
+                                class = "custom-absolute-panel",
+                                selectInput("accounting_year", "Select Accounting Year", 
+                                            choices = c("2010", "2015", "2016", "2017", "2018", "2019", "2020", "2021")),
+                                radioButtons("aoi_type", "Choose AOI Type:", choices = c("Administrative Area", "User-Defined Area"), selected = "User-Defined Area"),
+                                conditionalPanel(
+                                  condition = "input.aoi_type == 'User-Defined Area'",
+                                  fileInput("shapefile_zip", "Upload Shapefile (ZIP)", multiple = FALSE, accept = c('.zip')),
+                                  checkboxInput("show_polygon", "Show Polygon", value = TRUE)
+                                ),
+                                conditionalPanel(
+                                  condition = "input.aoi_type == 'Administrative Area'",
+                                  selectInput("country_select", "Select Country", choices = unique(world_map$NAME), selected = "Kenya")
+                                ),
+                                actionButton("get_tiles", "Download C Pools", class = "btn-primary btn-block"),
+                                selectInput("c_pool_display", "Select C Pool Layer", choices = NULL, width = "100%"),
+                                verbatimTextOutput("tile_names"),
+                                verbatimTextOutput("raster_status")
+                  )
+             )
+           ),
+           
+           fluidRow(
+             column(3,
+                    div(
+                      class='card_grey_left',
+                      div(class='card_grey-title',h5('Land Use/Ecosystem Selection',style="text-align: center;")),
+                      conditionalPanel(
+                        condition = "input.aoi_type == 'Administrative Area'",
+                        radioButtons("land_use_option", "Choose Land Use/Ecosystem Data:", choices = "Use CCI-LC", selected = "Use CCI-LC")
+                      ),
+                      
+                      conditionalPanel(
+                        condition = "input.aoi_type == 'User-Defined Area'",
+                        radioButtons("land_use_option", "Choose Land Use/Ecosystem Data:", choices = c("Upload Own", "Use CCI-LC"), selected = "Use CCI-LC")
+                      ),
+                      
+                      conditionalPanel(
+                        condition = "input.land_use_option == 'Upload Own'",
+                        fileInput("land_use_zip", "Choose a Land Use ZIP file", accept = c('.zip')),
+                        uiOutput("land_use_column_ui")
+                      )
+                      
+                    )    
+                    
+             ),
+             column(9,
+                    div(
+                      class='card_grey_right', 
+                      
+                      div(class='card_grey-title',h5('Ecosystem Analysis', style='text-align: center;')),
+                      
+                      actionButton("analyze", "Analyze"),
+                      br(),
+                      br(),
+                      br(),
+                      hidden( 
+                        div( id='tables',
+                          fluidRow(
+                             column(6,
+                             DTOutput("analysis_results"),
+                             ),
+                             column(6, 
+                             DTOutput("ecosystem_analysis_results")
+                             )
+                          )
+                        )
+                      )
+                    )
+             )
+           )
+           
+  ),
+  tabPanel("Accounting Periods", 
+           fluidRow(
+             div( class = "card",
+                  leafletOutput("map_accounting", height = 550),
+                  
+                  absolutePanel(top = 100,right = 20, width = 250,
+                                class = "custom-absolute-panel",
+                                selectInput("start_year", "Select Start Year", choices = c("2010", "2015", "2016", "2017", "2018", "2019", "2020", "2021")),
+                                selectInput("end_year", "Select End Year", choices = c("2010", "2015", "2016", "2017", "2018", "2019", "2020", "2021")),
+                                radioButtons("aoi_type_accounting", "Choose AOI Type:", choices = c("Administrative Area", "User-Defined Area"), selected = "User-Defined Area"),
+                                conditionalPanel(
+                                  condition = "input.aoi_type_accounting == 'User-Defined Area'",
+                                  fileInput("shapefile_zip_accounting", "Upload Shapefile (ZIP)", multiple = FALSE, accept = c('.zip')),
+                                  checkboxInput("show_polygon_accounting", "Show Polygon", value = TRUE)
+                                ),
+                                conditionalPanel(
+                                  condition = "input.aoi_type_accounting == 'Administrative Area'",
+                                  selectInput("accounting_country_select", "Select Country", choices = unique(world_map$NAME), selected = "Kenya")
+                                ),
+                                actionButton("get_tiles_accounting", "Download C Pools", class = "btn-primary btn-block", style = "width: 100%;"),
+                                selectInput("c_pool_display_accounting", "Select C Pool Layer", choices = NULL, width = "100%"),
+                                verbatimTextOutput("tile_names_accounting"),
+                                verbatimTextOutput("raster_status_accounting")
+                  )
+                  
+             )
+     ),
+     
+     fluidRow(
+              div(
+                class='card', 
+                
+                div(class='card_grey-title',h5('Accounting Analysis', style='text-align: center;')),
+                
+                actionButton("analyze_accounting", "Analyze"),
+                br(),
+                br(),
+                hidden( 
+                  div( id='tables_accounting',
+                       fluidRow(
+                         column(6,
+                                DTOutput("short_table_results")
+                         ),
+                         column(6, 
+                                DTOutput("moderate_table_results")
+                         ),
+                         br(),
+                         br(),
+                         column(12, 
+                                DTOutput("detailed_table_results")
+                         )
+                       )
+                  )
+                )
+              )
+     )
+  )
+  
+)
 
 server <- function(input, output, session) {
   reactive_aoi <- reactiveVal(NULL)
@@ -178,6 +222,8 @@ server <- function(input, output, session) {
   reactive_selected_raster_accounting <- reactiveVal(NULL)
   download_progress_accounting <- reactiveVal(0)
   reactive_shp_data_accounting <- reactiveVal(NULL)
+  cpools_popup_data <- reactiveVal(NULL)
+  shp_centroid_reactive <- reactiveVal(NULL)
   
   world_map <- st_as_sf(getMap(resolution = "low"))  # Load world map
   
@@ -211,15 +257,27 @@ server <- function(input, output, session) {
     }
   })
   
-  observeEvent(input$country_select, {
+  
+  observeEvent(list(input$country_select,input$map_shape_click,input$accounting_year), {
     req(input$aoi_type == "Administrative Area")
     country_shape <- world_map[world_map$NAME == input$country_select, ]
-    bbox <- st_bbox(country_shape)
+    
+    # load the data for pop up when Country is selected
+    popup_data <- readRDS(paste0('./data/Sum_',country_shape$ISO3[2],'_',input$accounting_year,'.Rdata'))
+    
+    country_shape$popupd <- popup_data # add the pop up info to the shapefile
+    
+    centroid <- sf::st_centroid(country_shape)
+    
     reactive_aoi(country_shape)
     leafletProxy("map") %>%
+      flyTo(lng = centroid$geometry[[2]][1],lat = centroid$geometry[[2]][2],zoom = 6) %>%
+      clearTiles() %>%
       clearShapes() %>%
-      addPolygons(data = country_shape, color = "blue", weight = 2, fillOpacity = 0, group = "drawnItems") %>%
-      fitBounds(bbox[1], bbox[3], bbox[2], bbox[4])
+      clearPopups() %>%
+      addTiles() %>%
+      addPolygons(data = country_shape, color = "blue", weight = 2, fillOpacity = 0, group = "drawnItems")%>%
+      addPopups(lng = centroid$geometry[[2]][1],lat = centroid$geometry[[2]][2],popup = paste(popup_data))
   })
   
   observeEvent(input$shapefile_zip, {
@@ -227,14 +285,25 @@ server <- function(input, output, session) {
     tmp_dir <- tempdir()
     unzip(input$shapefile_zip$datapath, exdir = tmp_dir)
     shp_file <- list.files(tmp_dir, pattern = "*.shp", full.names = TRUE)
+    
     if (length(shp_file) > 0) {
       aoi <- st_read(shp_file[1])
       bbox <- st_bbox(aoi)
+      
+      cp <- readRDS(paste0('./data/Pools_',aoi$ISO3,'_',input$accounting_year,'.Rdata'))
+      cpools_popup_data(cp)
+      
+      shp_centroid <- sf::st_centroid(aoi)
+      
+      shp_centroid_reactive(shp_centroid) # Feed the centroids into reactive object for use on the map
+      
       reactive_aoi(aoi)
       leafletProxy("map") %>%
+        flyTo(lng = shp_centroid$geometry[[1]][1],lat = shp_centroid$geometry[[1]][2],zoom = 7) %>% # for zooming in to AOI
         clearShapes() %>%
-        addPolygons(data = aoi, color = "blue", weight = 2, fillOpacity = 0, group = "drawnItems") %>%
-        fitBounds(bbox[1], bbox[3], bbox[2], bbox[4])
+        clearPopups() %>%
+        addPolygons(data = aoi, color = "blue", weight = 2, fillOpacity = 0, group = "drawnItems")
+      
     }
   })
   
@@ -305,8 +374,7 @@ server <- function(input, output, session) {
           message("Creating VRT file at: ", vrt_path)
           
           # Create the VRT file using gdalbuildvrt
-          print(local_files)
-          gdalbuildvrt(gdalfile = unlist(local_files), output.vrt = vrt_path, overwrite=T)
+          gdalbuildvrt(gdalfile = unlist(local_files), output.vrt = vrt_path)
           
           if (file.exists(vrt_path)) {
             message("VRT file created successfully.")
@@ -326,20 +394,19 @@ server <- function(input, output, session) {
   
   reactive_raster <- reactive({
     raster_path <- downloadTilesBasedOnAOI()
-    print(raster_path)
     message("Raster path from get_tiles event: ", raster_path)
     if (!is.null(raster_path) && file.exists(raster_path)) {
       raster_data <- rast(raster_path)
       lc <- raster_data[[1]]
-      names(raster_data) <- c("lc", "agc", "bgc", "deadwood", "litter", "soc", "total")
-      raster_data <- raster_data[[-1]]  # Exclude the first band "lc"
+      
+      names(raster_data) <- c("agc", "bgc", "deadwood", "litter","soc")
       aoi <- reactive_aoi()
       if (!is.null(aoi)) {
         aoi_vect <- vect(aoi)  # Convert to SpatVector
         raster_data <- crop(raster_data, aoi_vect)
         raster_data <- mask(raster_data, aoi_vect)
       }
-      return(list(raster_data = raster_data, lc = lc))
+      return(list(raster_data = raster_data))
     } else {
       message("Raster path is NULL or does not exist.")
       return(NULL)
@@ -363,12 +430,17 @@ server <- function(input, output, session) {
         bins <- c(0, 5, 10, 50, 100, 150, 200, 300, Inf)
         pal <- colorBin(palette = "viridis", domain = terra::values(layer_data), bins = bins, na.color = "transparent")
         
+        cpools_sel <- cpools_popup_data() %>%
+          filter(tolower(selected_layer)==tolower(Pool))
+        
         leafletProxy("map") %>%
           clearImages() %>%
           clearControls() %>%
+          clearPopups() %>%
           addRasterImage(layer_data, colors = pal, opacity = 0.9, layerId = "raster") %>%
-          addLegend(position = "bottomright", pal = pal, values = terra::values(layer_data), title = "C Mg/ha", opacity = 1) %>%
-          fitBounds(lng1 = terra::ext(layer_data)[1], lat1 = terra::ext(layer_data)[3], lng2 = terra::ext(layer_data)[2], lat2 = terra::ext(layer_data)[4])
+          addLegend(position = "bottomleft", pal = pal, values = terra::values(layer_data), title = "C Mg/ha", opacity = 1) %>%
+          addPopups(lng = shp_centroid_reactive()$geometry[[1]][1],lat = shp_centroid_reactive()$geometry[[1]][2],popup = HTML(paste(cpools_sel$Pool,'<br>',cpools_sel$Sum_Gg)))
+        
       }
     })
   })
@@ -395,52 +467,98 @@ server <- function(input, output, session) {
   })
   
   # Ecosystem analysis
-  observeEvent(input$analyze, {
-    req(reactive_raster(), reactive_shp_data())
+  observeEvent(input$analyze, { #list(input$analyze,input$country_select)
+    # req(reactive_raster(), reactive_shp_data())
+    # 
+    # # Ensure the selected column exists in the shapefile
+    # if (!input$land_use_column %in% names(reactive_shp_data())) {
+    #   stop("Selected land use column not found in the uploaded shapefile.")
+    # }
+    # 
+    # # Extract unique land use types from the selected column
+    # land_use_types <- unique(na.omit(reactive_shp_data()[[input$land_use_column]]))
+    # 
+    # # Initialize results dataframe
+    # results <- data.frame(land_use = character(), stringsAsFactors = FALSE)
+    # carbon_pools <- c("agc", "bgc", "deadwood", "litter", "soc", "total")
+    # 
+    # for (pool_name in carbon_pools) {
+    #   results[[pool_name]] <- numeric()
+    # }
+    # 
+    # # Compute the statistics for each land use type and carbon pool
+    # for (lu_type in land_use_types) {
+    #   lu_type_clean <- make.names(as.character(lu_type))  # Ensure valid column names
+    #   new_row <- data.frame(land_use = lu_type_clean, stringsAsFactors = FALSE)
+    #   for (pool_name in carbon_pools) {
+    #     new_row[[pool_name]] <- NA
+    #   }
+    #   results <- rbind(results, new_row)
+    # }
+    # 
+    # for (lu_type in land_use_types) {
+    #   lu_polygons <- reactive_shp_data()[reactive_shp_data()[[input$land_use_column]] == lu_type, ]
+    #   lu_type_clean <- make.names(as.character(lu_type))
+    #   for (pool_name in carbon_pools) {
+    #     masked_raster <- mask(reactive_raster()$raster_data[[pool_name]], vect(lu_polygons))
+    #     mean_value <- round(global(masked_raster, fun = mean, na.rm = TRUE)[[1]], 2)
+    #     results[results$land_use == lu_type_clean, pool_name] <- mean_value
+    #   }
+    # }
+    # 
+    # # Rename columns to include units
+    # colnames(results)[2:length(colnames(results))] <- paste0(colnames(results)[2:length(colnames(results))], " (C Mg/ha)")
     
-    # Ensure the selected column exists in the shapefile
-    if (!input$land_use_column %in% names(reactive_shp_data())) {
-      stop("Selected land use column not found in the uploaded shapefile.")
-    }
+    country_analyze <- world_map[world_map$NAME == input$country_select, ]
     
-    # Extract unique land use types from the selected column
-    land_use_types <- unique(na.omit(reactive_shp_data()[[input$land_use_column]]))
-    
-    # Initialize results dataframe
-    results <- data.frame(land_use = character(), stringsAsFactors = FALSE)
-    carbon_pools <- c("agc", "bgc", "deadwood", "litter", "soc", "total")
-    
-    for (pool_name in carbon_pools) {
-      results[[pool_name]] <- numeric()
-    }
-    
-    # Compute the statistics for each land use type and carbon pool
-    for (lu_type in land_use_types) {
-      lu_type_clean <- make.names(as.character(lu_type))  # Ensure valid column names
-      new_row <- data.frame(land_use = lu_type_clean, stringsAsFactors = FALSE)
-      for (pool_name in carbon_pools) {
-        new_row[[pool_name]] <- NA
-      }
-      results <- rbind(results, new_row)
-    }
-    
-    for (lu_type in land_use_types) {
-      lu_polygons <- reactive_shp_data()[reactive_shp_data()[[input$land_use_column]] == lu_type, ]
-      lu_type_clean <- make.names(as.character(lu_type))
-      for (pool_name in carbon_pools) {
-        masked_raster <- mask(reactive_raster()$raster_data[[pool_name]], vect(lu_polygons))
-        mean_value <- round(global(masked_raster, fun = mean, na.rm = TRUE)[[1]], 2)
-        results[results$land_use == lu_type_clean, pool_name] <- mean_value
-      }
-    }
-    
-    # Rename columns to include units
-    colnames(results)[2:length(colnames(results))] <- paste0(colnames(results)[2:length(colnames(results))], " (C Mg/ha)")
-    
-    output$ecosystem_analysis_results <- renderDataTable({
-      results
+    # make a reactive object to hold the data for display on the table - Ecosys_Pools.. data
+    ecosy_pools.tbl <- reactive({
+      tbl <- readRDS(paste0('./data/Ecosys_Pools_',country_analyze$ISO3[2],'_',input$accounting_year,'.Rdata'))
     })
+    
+    # Data table with the reactive object
+    output$analysis_results <- renderDT({
+      datatable(ecosy_pools.tbl(),
+                options = list(dom = 'Bfrtip',
+                               buttons = c('csv', 'excel', 'pdf'),
+                               pageLength = 5,
+                  scrollX=TRUE,scrollCollapse=TRUE
+                )
+                  ) %>%
+        formatStyle(columns = names(ecosy_pools.tbl()),
+                    backgroundColor = '#E4E8EB',
+                    border = '1px solid #2E8B57')
+                    
+          
+    })
+    
+    # make a reactive object to hold the data for display on the table - Ecosys_Sum.. data
+    ecosy_sum.tbl <- reactive({
+      tbl <- readRDS(paste0('./data/Ecosys_Sum_',country_analyze$ISO3[2],'_',input$accounting_year,'.Rdata'))
+    })
+    
+    # Data table with the reactive object
+    output$ecosystem_analysis_results <- renderDT({
+      datatable(ecosy_sum.tbl(),
+                options = list(dom = 'Bfrtip',
+                               buttons = c('csv', 'excel', 'pdf'),
+                               pageLength = 5,
+                  scrollX=TRUE,scrollCollapse=TRUE
+                )) %>%
+        formatStyle(columns = names(ecosy_sum.tbl()),
+                    backgroundColor = '#D9E2DC',
+                    border = '1px solid #2E8B57')
+                    
+          
+    })
+    
+    shinyjs::show(id='tables')
+    
   })
+  
+
+  ########***** Accounting Periods
+  ########*
   
   output$map_accounting <- renderLeaflet({
     leaflet() %>%
@@ -454,6 +572,32 @@ server <- function(input, output, session) {
         polygonOptions = drawPolygonOptions(shapeOptions = drawShapeOptions(color = 'blue'))
       )
   })
+  
+  ## Accounting Adminstrative AOI selection
+  
+  observeEvent(list(input$accounting_country_select,input$map_accounting_shape_click,input$start_year,input$end_year), {
+    req(input$aoi_type_accounting == "Administrative Area")
+    accounting.country <- world_map[world_map$NAME == input$accounting_country_select, ]
+    
+    # Load the data to be displayed on popups
+    start_year.popup <- readRDS(paste0('./data/Sum_',accounting.country$ISO3[2],'_',input$start_year,'.Rdata'))
+    end_year.popup <- readRDS(paste0('./data/Sum_',accounting.country$ISO3[2],'_',input$end_year,'.Rdata'))
+    
+    accounting.centroid <- sf::st_centroid(accounting.country)
+    
+    #reactive_aoi(accounting.country)
+    leafletProxy("map_accounting") %>%
+      flyTo(lng = accounting.centroid$geometry[[2]][1],lat = accounting.centroid$geometry[[2]][2],zoom = 6) %>%
+      clearTiles() %>%
+      clearShapes() %>%
+      clearPopups() %>%
+      clearControls() %>%
+      addTiles() %>%
+      addPolygons(data = accounting.country, color = "blue", weight = 2, fillOpacity = 0, group = "drawnItems")%>%
+      addPopups(lng = accounting.centroid$geometry[[2]][1],
+                lat = accounting.centroid$geometry[[2]][2],popup = HTML(paste0(start_year.popup,'<br>',end_year.popup)))
+  })
+  
   
   # Handle AOI type changes for accounting
   observe({
@@ -479,12 +623,14 @@ server <- function(input, output, session) {
     shp_file <- list.files(tmp_dir, pattern = "*.shp", full.names = TRUE)
     if (length(shp_file) > 0) {
       aoi <- st_read(shp_file[1])
+      accounting_shp_centroid <- sf::st_centroid(aoi)
       bbox <- st_bbox(aoi)
       reactive_aoi_accounting(aoi)
       leafletProxy("map_accounting") %>%
+        flyTo(lng = accounting_shp_centroid$geometry[[1]][1],lat = accounting_shp_centroid$geometry[[1]][2],zoom = 7) %>% # for zooming in to AOI
         clearShapes() %>%
-        addPolygons(data = aoi, color = "blue", weight = 2, fillOpacity = 0, group = "drawnItemsAccounting") %>%
-        fitBounds(bbox[1], bbox[3], bbox[2], bbox[4])
+        clearPopups() %>%
+        addPolygons(data = aoi, color = "blue", weight = 2, fillOpacity = 0, group = "drawnItemsAccounting") 
     }
   })
   
@@ -499,6 +645,7 @@ server <- function(input, output, session) {
     bbox <- st_bbox(aoi)
     leafletProxy("map_accounting") %>%
       clearShapes() %>%
+      clearPopups() %>%
       addPolygons(data = aoi, color = "blue", weight = 2, fillOpacity = 0, group = "drawnItemsAccounting")
   })
   
@@ -579,14 +726,11 @@ server <- function(input, output, session) {
       raster_data_start <- rast(raster_paths$start)
       raster_data_end <- rast(raster_paths$end)
       
-      names(raster_data_start) <- c("lc", "agc", "bgc", "deadwood", "litter", "soc", "total")
-      names(raster_data_end) <- c("lc", "agc", "bgc", "deadwood", "litter", "soc", "total")
+      names(raster_data_start) <- c("agc", "bgc", "deadwood", "litter", "soc")
+      names(raster_data_end) <- c("agc", "bgc", "deadwood", "litter", "soc")
       
       lc_start <- raster_data_start[[1]]
       lc_end <- raster_data_end[[1]]
-      
-      #  raster_data_start <- raster_data_start[[-1]]  # Exclude the first band "lc"
-      # raster_data_end <- raster_data_end[[-1]]  # Exclude the first band "lc"
       
       aoi <- reactive_aoi_accounting()
       if (!is.null(aoi)) {
@@ -597,7 +741,7 @@ server <- function(input, output, session) {
         raster_data_end <- crop(raster_data_end, aoi_vect)
         raster_data_end <- mask(raster_data_end, aoi_vect)
       }
-      return(list(start = raster_data_start, end = raster_data_end, lc_start = lc_start, lc_end = lc_end))
+      return(list(start = raster_data_start, end = raster_data_end))
     } else {
       message("Raster paths are NULL or do not exist.")
       return(NULL)
@@ -659,46 +803,74 @@ server <- function(input, output, session) {
   
   # Accounting analysis
   observeEvent(input$analyze_accounting, {
-    req(reactive_raster_accounting())
+    #req(reactive_raster_accounting())
     
-    rasters <- reactive_raster_accounting()
-    period1_ras <- rasters$start
-    period2_ras <- rasters$end
+    country_analyze <- world_map[world_map$NAME == input$accounting_country_select, ]
     
-    accounting_results <- calculate_net_fluxes(period1_ras, period2_ras)
+    # rasters <- reactive_raster_accounting()
+    # period1_ras <- rasters$start
+    # period2_ras <- rasters$end
     
-    output$short_table_results <- renderDataTable({
+    # accounting_results <- calculate_net_fluxes(period1_ras, period2_ras)
+    accounting_results <- readRDS(paste0('./data/',country_analyze$ISO3[2],'_',country_analyze$ISO3[2],'_',input$start_year,'_',input$end_year,'.Rdata'))
+    
+    output$short_table_results <- renderDT({
       results <- accounting_results[[1]]
-      results <- cbind(Epoch = paste(input$start_year, "-", input$end_year), results) # Add epochs
+      
+      results <- results %>%
+        mutate_if(is.numeric,~round(.,2))
+      
       datatable(results, extensions = 'Buttons', options = list(
         dom = 'Bfrtip',
         buttons = c('csv', 'excel', 'pdf'),
-        pageLength = 10
-      ))
+        pageLength = 5,
+        scrollX=TRUE
+      )) %>%
+        formatStyle(columns = names(results),
+                    backgroundColor = '#E4E8EB',
+                    border='1px solid #3498db')
+      
     })
     
-    output$moderate_table_results <- renderDataTable({
+    output$moderate_table_results <- renderDT({
       results <- accounting_results[[2]]
-      results <- cbind(Epoch = paste(input$start_year, "-", input$end_year), results) # Add epochs
+      
+      results <- results %>%
+        mutate_if(is.numeric,~round(.,2))
+      
       datatable(results, extensions = 'Buttons', options = list(
         dom = 'Bfrtip',
         buttons = c('csv', 'excel', 'pdf'),
-        pageLength = 10
-      ))
+        pageLength = 5,
+        scrollX=TRUE
+      )) %>%
+        formatStyle(columns = names(results),
+                    backgroundColor = '#D9E2DC',
+                    border='1px solid #3498db')
     })
     
-    output$detailed_table_results <- renderDataTable({
+    output$detailed_table_results <- renderDT({
       results <- accounting_results[[3]]
-      results <- cbind(Epoch = paste(input$start_year, "-", input$end_year), results) # Add epochs
+      
+      results <- results %>%
+        mutate_if(is.numeric,~round(.,2))
+      
       datatable(results, extensions = 'Buttons', options = list(
         dom = 'Bfrtip',
         buttons = c('csv', 'excel', 'pdf'),
-        pageLength = 10
-      ))
+        pageLength = 5,
+        scrollX=TRUE
+      )) %>%
+        formatStyle(columns = names(results),
+                    backgroundColor = '#FFFFFF',
+                    border='1px solid #3498db')
     })
     
- 
+    shinyjs::show('tables_accounting')
+    
   })
+  
+
 }
 
 shinyApp(ui = ui, server = server)
