@@ -1,4 +1,4 @@
-
+/* Brand colors: #488691, #69969f, #e4f0f1, # f9fafb, # dce6e8, 9ab5bc*/
 body {
   background-color: #C1CDCD;
   color: black;
@@ -107,7 +107,7 @@ body {
 
 .card_grey-title {
   
-  background-color: #2F4F4F;
+  background-color: #488691;
   color: #ffffff;
   padding: 8px 12px;
   border-top-left-radius: 8px;
@@ -116,7 +116,6 @@ body {
   font-size: 1.3em;
   margin-bottom: 10px;
 }
-
 
 /* Styling the tables - applies automatically, no need to specify on the UI*/
 
