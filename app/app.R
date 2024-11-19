@@ -518,13 +518,12 @@ server <- function(input, output, session) {
     
     # Data table with the reactive object
     output$analysis_results <- renderDT({
-      datatable(ecosy_pools.tbl(),
+      datatable(ecosy_pools.tbl(),extensions = 'Buttons',
                 options = list(dom = 'Bfrtip',
                                buttons = c('csv', 'excel', 'pdf'),
                                pageLength = 5,
                   scrollX=TRUE,scrollCollapse=TRUE
-                )
-                  ) %>%
+                )) %>%
         formatStyle(columns = names(ecosy_pools.tbl()),
                     backgroundColor = '#E4E8EB',
                     border = '1px solid #2E8B57')
@@ -539,7 +538,7 @@ server <- function(input, output, session) {
     
     # Data table with the reactive object
     output$ecosystem_analysis_results <- renderDT({
-      datatable(ecosy_sum.tbl(),
+      datatable(ecosy_sum.tbl(),extensions = 'Buttons',
                 options = list(dom = 'Bfrtip',
                                buttons = c('csv', 'excel', 'pdf'),
                                pageLength = 5,
