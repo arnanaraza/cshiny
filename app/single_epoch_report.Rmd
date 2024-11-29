@@ -1,0 +1,43 @@
+---
+title: "Single Epoch Report"
+author: "Arnan"
+date: "2024-11-21"
+output: pdf_document
+params:
+  table1: NULL
+  table2: NULL
+  map_image: NULL
+---
+
+## The tables
+Generic text on the tables goes here...
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(leaflet)
+library(DT)
+library(tinytex)
+library(knitr)
+#tinytex::install_tinytex()
+```
+
+```{r echo=FALSE} 
+
+knitr::kable(params$table1,caption='Ecosytem pools table')
+
+```
+
+```{r echo=FALSE} 
+
+knitr::kable(params$table2, caption = 'Ecosystem sum table') 
+
+```
+
+## About the map
+Generic text about the map goes here...
+```{r echo=FALSE, out.width='100%'}
+
+include_graphics(params$map_image)
+
+```
+

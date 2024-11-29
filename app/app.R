@@ -15,6 +15,8 @@ library(DT)
 library(rworldmap)
 library(sp)
 library(shinyjs)
+library(shinyscreenshot)
+
 
 # Set working directory
 #setwd('C:/cshiny/app')
@@ -149,7 +151,8 @@ ui <- navbarPage(
                       )
                     )
              )
-           )
+           ),
+           downloadButton('download_sepoch_report','Download Report')
            
   ),
   tabPanel("Accounting Periods", 
@@ -513,6 +516,7 @@ server <- function(input, output, session) {
     
     # make a reactive object to hold the data for display on the table - Ecosys_Pools.. data
     ecosy_pools.tbl <- reactive({
+      req(input$accounting_year)
       tbl <- readRDS(paste0('./data/Ecosys_Pools_',country_analyze$ISO3[2],'_',input$accounting_year,'.Rdata'))
     })
     
@@ -553,9 +557,49 @@ server <- function(input, output, session) {
     
     shinyjs::show(id='tables')
     
+### Download Single Epoch report
+  output$download_sepoch_report <- downloadHandler(
+
+    filename <- 'single_epoch_report.pdf',
+    
+    content = function(file){
+      tempReport <- file.path(tempdir(), "single_epoch_report.Rmd")
+      file.copy("./single_epoch_report.Rmd", tempReport, overwrite = TRUE)
+
+      temp_screenshot <- tempfile(fileext = ".png")
+      shinyscreenshot::screenshot(
+        selector = "#map",
+        filename = "map_screenshot",
+        server_dir = getwd()
+      )
+      
+      Sys.sleep(1)
+      
+      file.rename("map_screenshot.png",temp_screenshot)
+      
+      tb1 <- ecosy_pools.tbl()
+      tb2 <- ecosy_sum.tbl()
+      
+      
+     params <- list(
+       table1 = tb1,
+       table2 = tb2,
+       map_image = temp_screenshot 
+     )
+     
+      rmarkdown::render(
+        tempReport,
+        output_file = file,
+        params = params,
+        envir = new.env(parent = globalenv())
+      )
+      unlink(temp_screenshot)
+    },
+    contentType = 'application/pdf'
+  )
+  
   })
   
-
   ########***** Accounting Periods
   ########*
   
