@@ -233,6 +233,7 @@ server <- function(input, output, session) {
   output$map <- renderLeaflet({
     leaflet() %>%
       addTiles() %>%
+      setView(lng = 0,lat = 20,zoom = 2) %>%
       addDrawToolbar(
         targetGroup = 'drawnItems',
         polylineOptions = FALSE,
@@ -276,6 +277,7 @@ server <- function(input, output, session) {
     leafletProxy("map") %>%
       flyTo(lng = centroid$geometry[[2]][1],lat = centroid$geometry[[2]][2],zoom = 6) %>%
       clearTiles() %>%
+      #clearControls() %>%
       clearShapes() %>%
       clearPopups() %>%
       addTiles() %>%
